@@ -1,63 +1,59 @@
 <?php 
-	error_reporting(0);
 	require("connect.php");
 
 	$rec=1;
 
-	$p=$_GET["page"];
-		if($p>1){
-			$to=$rec;
-			$from=($p*$rec)-$rec;
-			$i=(($p-1)*$rec)+1;
-		}else{
-			$to=$rec;
-			$from=0;
-			$i=1;
-			$p=1;
-		}			
+	$p = isset($_GET["page"]) ? (int)$_GET["page"] : 1;
+	if($p>1){
+		$to=$rec;
+		$from=($p*$rec)-$rec;
+	}else{
+		$to=$rec;
+		$from=0;
+	}			
 				
-	$srv="";
-	if($_GET["servers"]!="")
-		$srv=" and sid='".$_GET["servers"]."' ";
-												
-	$ex = $conn->query("select * from servers where sid=sid $srv order by sid limit $from,$to ");
+	$sid = isset($_GET["servers"]) ? (int)$_GET["servers"] : 0;
 
-	while($rs = mysqli_fetch_array($ex)){	
+	if ($sid > 0) {
+		$stmt = $conn->prepare("SELECT * FROM servers WHERE sid = ? ORDER BY sid LIMIT ?,?");
+		$stmt->bind_param("iii", $sid, $from, $to);
+	} else {
+		$stmt = $conn->prepare("SELECT * FROM servers ORDER BY sid LIMIT ?,?");
+		$stmt->bind_param("ii", $from, $to);
+	}
+	
+	$stmt->execute();
+	$result = $stmt->get_result();
 
-	$ex = $conn->query("select * from servers s where s.sid='$rs[0]' and s.sid=s.sid ");
-
-	while($rs = mysqli_fetch_array($ex)){
-			
-	$srvno = $rs[0];
-	$sname = $rs["server"];		
+	if($rs = $result->fetch_assoc()){	
+		$srvno = $rs["sid"];
+		$sname = $rs["server"];		
 ?>
 
-<form action="server-config-proc.php" method="POST">
-	<div class="container text-center" style="padding:0;min-width:400px">
-		<br><h3>Server IP Address <br> or Domain Name</h3>
-		<div style="margin-left:20px;text-align:left">
-			<b>Know your Host:</b>
-			<ul style="margin-top:0px">
-				<li>IF Hosted Locally Enter IP Address</li>
-				<li>IF Hosted Online Enter Domain Name</li>
-			</ul>
-		</div>
-		<div class="forn-group">
-			<div style="margin:10px">
-				<input type="hidden" class="form-control" name="servidno" value="<?php echo $srvno;?>">
-			</div>
-			<div style="margin:10px">
-				<input type="text" class="form-control" name="servname" value="<?php echo $sname;?>" placeholder="IP Address or Domain Name" required>
-			</div>
-			</div>
-			<div style="margin:10px">
-				<button type="SUBMIT" class="form-control btn btn-primary" name="upDate">Update</button>
-			</div>
-		</div>
+<div class="premium-form p-4 text-center">
+	<i class="fas fa-server fa-3x mb-3" style="color: var(--accent-color);"></i>
+	<h3 class="text-gradient mb-4">Server Configuration</h3>
+	
+	<div class="alert text-left mb-4" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-muted);">
+		<strong class="d-block mb-2 text-white"><i class="fas fa-info-circle mr-2"></i> Know your Host:</strong>
+		<ul class="mb-0 pl-3">
+			<li>If hosted locally, enter the IP Address.</li>
+			<li>If hosted online, enter the Domain Name.</li>
+		</ul>
 	</div>
-</form>
+
+	<form action="server-config-proc.php" method="POST">
+		<input type="hidden" name="servidno" value="<?php echo htmlspecialchars($srvno);?>">
+		<div class="form-group mb-4">
+			<label class="text-muted-premium small text-left w-100 d-block mb-1">IP Address or Domain Name</label>
+			<input type="text" class="form-control text-center" name="servname" value="<?php echo htmlspecialchars($sname);?>" placeholder="e.g. 192.168.1.100" required>
+		</div>
+		<div class="form-group mb-0">
+			<button type="submit" class="btn btn-premium w-100" name="upDate">Update Server</button>
+		</div>
+	</form>
+</div>
 
 <?php
-		}		
 	}								
-?>	
+?>

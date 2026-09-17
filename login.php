@@ -1,49 +1,59 @@
 <?php 
-	error_reporting(0);
 	require("connect.php");
 	require("head.php");
 	require("menunav.php");
 	
+	$m = "";
 	if(isset($_POST["login"])){
-		$ex=$conn->query("select * from users 
-			where username='".$_POST["user"]."' 
-			and password='".$_POST["pass"]."'")or die(mysqli_error($conn));
+		$stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND password = ?");
+		$stmt->bind_param("ss", $_POST["user"], $_POST["pass"]);
+		$stmt->execute();
+		$result = $stmt->get_result();
 			
-		if($rs=mysqli_fetch_array($ex)){
-			$exx=$conn->query("select * from validity where validity>'".date("Y-m-d")."'") or die(mysqli_error($conn));
+		if($rs = $result->fetch_assoc()){
+			$stmt2 = $conn->prepare("SELECT * FROM validity WHERE validity > ?");
+			$today = date("Y-m-d");
+			$stmt2->bind_param("s", $today);
+			$stmt2->execute();
+			$result2 = $stmt2->get_result();
 			
-			if($rs1=mysqli_fetch_array($exx)){
-				$_SESSION["name"]=$rs["fullname"];
-				$_SESSION["user"]=$rs["username"];
-				$_SESSION["pass"]=$rs["password"];
-				$_SESSION["type"]=$rs["usertype"];
+			if($rs1 = $result2->fetch_assoc()){
+				$_SESSION["name"] = $rs["fullname"];
+				$_SESSION["user"] = $rs["username"];
+				$_SESSION["pass"] = $rs["password"];
+				$_SESSION["type"] = $rs["usertype"];
 				
-				echo"<script>window.location = 'index.php';</script>";
-			}else
-			$m="<div class='text-danger'><b>ACCESS DENIED! Your access validity has expired. Contact your system administrator.</b></div><br>";
-		}		
-		else
-			$m="<div class='text-danger'><b>ACCESS DENIED! Either username or password is invalid.</b></div><br>";
-		$err=1;
+				echo "<script>window.location = 'index.php';</script>";
+			} else {
+				$m = "<div class='alert alert-danger' style='background: rgba(239, 68, 68, 0.2); color: #fff; border: 1px solid #ef4444;'><b>ACCESS DENIED!</b> Your access validity has expired. Contact your system administrator.</div>";
+			}
+		} else {
+			$m = "<div class='alert alert-danger' style='background: rgba(239, 68, 68, 0.2); color: #fff; border: 1px solid #ef4444;'><b>ACCESS DENIED!</b> Either username or password is invalid.</div>";
+		}
 	}	
 ?>
 
-	<section style="min-height:700px;background:#eee url(images/world.png);background-size:cover">
+	<section class="d-flex align-items-center justify-content-center" style="min-height: calc(100vh - 200px); padding: 2rem 0;">
 		<div class="container">
 			<div class="row justify-content-center text-center">
-				<div class="col-lg-4">
-					<div style="margin-top:50px;padding:20px;background:rgb(255, 255, 255, 0.5);border-radius:20px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3)">
-						<h2 style="margin-top:10px" class="u-text u-text-custom-color-1 u-text-1">Admin Login</h2>
-						<div>
-							<?php echo $m ;?> 
-							<form action='login.php' method='POST' enctype='multipart/form-data'>		
-								<div class='form-group'> 
-									<input class="form-control" type="text" name="user" placeholder="UserName" required ><br>
-									<input type='password' class='form-control' name="pass" placeholder='Password' required ><br>
-									<input type='submit' class='btn btn-primary form-control' name='login' value='Log In' >
-								</div>
-							</form>
-						</div>	
+				<div class="col-md-6 col-lg-5">
+					<div class="glass-panel premium-form p-5">
+						<i class="fas fa-user-circle fa-4x mb-3" style="color: var(--accent-color);"></i>
+						<h2 class="text-gradient mb-4">Admin Login</h2>
+						
+						<?php echo $m ;?> 
+						
+						<form action='login.php' method='POST' enctype='multipart/form-data'>		
+							<div class='form-group mb-3'> 
+								<input class="form-control" type="text" name="user" placeholder="Username" required>
+							</div>
+							<div class='form-group mb-4'> 
+								<input type='password' class='form-control' name="pass" placeholder='Password' required>
+							</div>
+							<div class='form-group mb-0'> 
+								<input type='submit' class='btn btn-premium w-100' name='login' value='Secure Login'>
+							</div>
+						</form>
 					</div>
 				</div>
 			</div>

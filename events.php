@@ -1,162 +1,127 @@
 <?php 
-	error_reporting(0);
 	require("connect.php");
 	require("head.php");
 	require("menunav.php");
 
 	$rec=1;
-	$p=$_GET['page'];
-		if($p>1){
-			$to=$rec;
-			$from=($p*$rec)-$rec;
-			$i=(($p-1)*$rec)+1;
-		}else{
-			$to=$rec;
-			$from=0;
-			$i=1;
-			$p=1;
-		}			
-			
-	$eve="";
-		if($_GET["events"]!="")
-		$eve=" and id='".$_GET["events"]."' ";
-
-	$ex=$conn->query("select * from events where 1=1 $eve order by id limit $from,$to ")or die(mysqli_error($conn));
+	$p=isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+	$to=$rec;
+	$from=($p*$rec)-$rec;
 	
-	while($rs=mysqli_fetch_array($ex)){
-		$eid=$rs[0];
-		$eve=$rs["event"];
-		$ven=$rs["venue"];
+	// Secure the parameter
+	$eventId = isset($_GET['events']) ? intval($_GET['events']) : 0;
+
+	// Use prepared statements for security
+	$stmt = $conn->prepare("SELECT * FROM events WHERE id = ? LIMIT ?, ?");
+	$stmt->bind_param("iii", $eventId, $from, $to);
+	$stmt->execute();
+	$ex = $stmt->get_result();
+	
+	if($rs = $ex->fetch_assoc()){
+		$eid = htmlspecialchars($rs["id"]);
+		$eve = htmlspecialchars($rs["event"]);
+		$ven = htmlspecialchars($rs["venue"]);
+		$date_fr = htmlspecialchars($rs["date_fr"]);
+		$date_to = htmlspecialchars($rs["date_to"]);
+		$service = htmlspecialchars($rs["service"]);
 		
-		$counts_query = $conn->query("
+		// Secure counts query
+		$counts_stmt = $conn->prepare("
 			SELECT 
 				COUNT(*) as total_codes,
 				SUM(CASE WHEN status='Checkin' THEN 1 ELSE 0 END) as checkin_count,
 				SUM(CASE WHEN status='Checkout' THEN 1 ELSE 0 END) as checkout_count,
 				SUM(CASE WHEN status!='0' THEN 1 ELSE 0 END) as active_count
 			FROM codes
-			WHERE eid = '$eid'
-		") or die(mysqli_error($conn));
+			WHERE eid = ?
+		");
+		$counts_stmt->bind_param("i", $eid);
+		$counts_stmt->execute();
+		$counts_result = $counts_stmt->get_result();
 		
-		$counts = mysqli_fetch_assoc($counts_query);
+		$counts = $counts_result->fetch_assoc();
 		$totguesto = $counts['total_codes'] ?? 0;
 		$tguest = $counts['checkin_count'] ?? 0;
 		$tgueste = $counts['checkout_count'] ?? 0;
 		$tguests = $counts['active_count'] ?? 0;
 ?>
-    <section id="refresh" style="min-height:700px" class="u-align-center u-clearfix u-image u-shading u-section-3" src="images/world.png">
-      <div class="u-clearfix u-sheet u-valign-middle-sm u-valign-middle-xs u-sheet-1">
-        <div class="u-align-center u-container-style u-expanded-width-sm u-expanded-width-xs u-grey-10 u-group u-opacity u-opacity-70 u-radius-20 u-shape-round u-group-1">
-          <div class="u-container-layout u-container-layout-1">
-            <h1 class="u-custom-font u-font-montserrat u-text u-text-body-alt-color u-text-1">
-              <span class="u-text-custom-color-1"></span>
-              <span class="u-text-custom-color-1">
-				<?php echo $eve;?>
-			</span>
-            </h1>
-            <p class="u-text u-text-2">
-				<?php echo $ven;?>
-			</p>
-			<div>
-				<?php 
-	
-					$date1=date_create("".$rs["date_fr"]."");
-					$date2=date_create("".$rs["date_to"]."");
-			
-					if(($date1)==$date2){
-						echo date_format($date1,"F d, Y");
-					}else{
-						echo date_format($date1,"F d, Y");
-						echo"<br>";
-						echo date_format($date2,"F d, Y");
-					}
-				?>
-			</div>
-			<?php if($totguesto > 0){ ?>	<br>
-				<a style="width:140px" class="btn btn-danger" href="viewcodes.php?events=<?php echo $eid;?>">View Codes</a> &nbsp;
-				<a onclick="clearData()" style="width:140px" class="btn btn-danger">Reset Counter</a>
-			<?php } else { ?>
-				<b class="text-primary">No QR Codes Generated</b><br>
-				<?php if(isset($_SESSION['user'])){ ?>	
-				<a style="width:140px" class="btn btn-danger" rel="facebox" href="generate-codes-form.php?events=<?php echo $eid;?>">		Generate Code
-				</a> &nbsp;
-				<?php } else { ?>
-				<a style="width:140px" class="btn btn-danger" href="login.php">		
-					Admin Login
-				</a> &nbsp;		
-				<?php } ?>				
-				<a href="index.php" style="width:140px" class="btn btn-danger">Back to Home</a>
-			<?php } ?>
-			<p> </p>
-          </div>
-        </div>
-        <div class="u-expanded-width-md u-expanded-width-sm u-expanded-width-xs u-list u-list-1">
-          <div class="u-repeater u-repeater-1">
-            <div class="u-align-center u-container-style u-custom-color-1 u-list-item u-opacity u-opacity-70 u-radius-50 u-repeater-item u-shape-round u-video-cover">
-              <div class="u-container-layout u-similar-container u-valign-top u-container-layout-2">
-				<span>
-					<img src="images/checkin.png" height="62">
-				</span>
-                <h4 class="u-custom-font u-font-montserrat u-text u-text-body-alt-color u-text-4">
-					<?php echo"".$rs["service"]."";?><br>Check-In
-				</h4>
-                <p class="u-text u-text-body-alt-color u-text-default u-text-5" data-animation-name="counter" data-animation-event="scroll" data-animation-duration="3000">
-					<?php echo "$tguest";?>
-				</p>
-              </div>
-            </div>
-            <div class="u-align-center u-container-style u-custom-color-1 u-list-item u-opacity u-opacity-70 u-radius-50 u-repeater-item u-shape-round u-video-cover">
-              <div class="u-container-layout u-similar-container u-valign-top u-container-layout-3">
-				<span>
-					<img src="images/checkout.png" height="62">
-				</span>
-                <h4 class="u-custom-font u-font-montserrat u-text u-text-body-alt-color u-text-6">
-					<?php echo"".$rs["service"]."";?><br>Check-Out
-				</h4>
-                <p class="u-text u-text-body-alt-color u-text-default u-text-7" data-animation-name="counter" data-animation-event="scroll" data-animation-duration="3000">
-					<?php echo "$tgueste";?>
-				</p>
-              </div>
-            </div>
-            <div class="u-align-center u-container-style u-custom-color-1 u-list-item u-opacity u-opacity-70 u-radius-50 u-repeater-item u-shape-round u-video-cover">
-              <div class="u-container-layout u-similar-container u-valign-top u-container-layout-4">
-				<span>
-					<img src="images/guests.png" height="62">
-				</span>
-                <h4 class="u-custom-font u-font-montserrat u-text u-text-body-alt-color u-text-8">
-					<?php echo"Total <br>".$rs["service"]."";?>
-				</h4>
-                <p class="u-text u-text-body-alt-color u-text-default u-text-9" data-animation-name="counter" data-animation-event="scroll" data-animation-duration="3000">
-					<?php echo "$tguests";?>
-				</p>
-              </div>
-            </div>
-            <div class="u-align-center u-container-style u-custom-color-1 u-list-item u-opacity u-opacity-70 u-radius-50 u-repeater-item u-shape-round u-video-cover u-list-item-4">
-              <div class="u-container-layout u-similar-container u-valign-top u-container-layout-5">
-				<span>
-					<img src="images/qrcode.png" height="62">
-				</span>
-                <h4 class="u-custom-font u-font-montserrat u-text u-text-body-alt-color u-text-10">
-					Pass <br>Available
-				</h4>
-                <p class="u-text u-text-body-alt-color u-text-default u-text-11" data-animation-name="counter" data-animation-event="scroll" data-animation-duration="3000">
-					<?php echo"$totguesto"-"$tguests";?>
-				</p>
-              </div>
-            </div>
-          </div><br><br><br><br><br><br>
-        </div>
-      </div>
-    </section>	
-	
-	<?php } ?>
-	
-    <div style="position:fixed;bottom:0;right:0;left:0">
-	<?php include("footer.php");?>
-	</div>
 
-  </body>
-</html>
+<div class="main-content container d-flex flex-column align-items-center" id="refresh">
+  
+  <div class="glass-panel text-center w-100 mb-5" style="max-width: 800px; background: rgba(11, 15, 25, 0.7);">
+    <h1 class="text-gradient display-4 mb-3"><?php echo $eve; ?></h1>
+    <p class="lead text-muted-premium mb-3">
+      <i class="fas fa-map-marker-alt" style="margin-right: 8px;"></i><?php echo $ven; ?>
+    </p>
+    <div class="text-white mb-4">
+      <?php 
+        $date1=date_create($date_fr);
+        $date2=date_create($date_to);
+        if($date1 == $date2){
+          echo date_format($date1, "F d, Y");
+        } else {
+          echo date_format($date1, "F d, Y") . " - " . date_format($date2, "F d, Y");
+        }
+      ?>
+    </div>
+
+    <div class="mt-4">
+      <?php if($totguesto > 0){ ?>
+        <a class="btn btn-premium mx-2 my-1" href="viewcodes.php?events=<?php echo $eid; ?>">View Codes</a>
+        <button onclick="clearData()" class="btn btn-danger-premium mx-2 my-1">Reset Counter</button>
+      <?php } else { ?>
+        <div class="alert" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;">
+          <strong>Notice:</strong> No QR Codes Generated yet.
+        </div>
+        <?php if(isset($_SESSION['user'])){ ?>	
+          <a class="btn btn-premium mx-2 my-1" rel="facebox" href="generate-codes-form.php?events=<?php echo $eid; ?>">Generate Codes</a>
+        <?php } else { ?>
+          <a class="btn btn-premium mx-2 my-1" href="login.php">Admin Login</a>
+        <?php } ?>				
+        <a href="index.php" class="btn btn-glass mx-2 my-1">Back to Home</a>
+      <?php } ?>
+    </div>
+  </div>
+
+  <div class="stats-grid w-100">
+    <div class="event-card glass-panel hover-scale" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+      <i class="fas fa-sign-in-alt fa-3x mb-3" style="color: #10b981;"></i>
+      <h4 class="mb-1 text-white"><?php echo $service; ?><br><small class="text-muted-premium">Check-In</small></h4>
+      <div class="counter" style="color: #10b981;"><?php echo $tguest; ?></div>
+    </div>
+    
+    <div class="event-card glass-panel hover-scale" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+      <i class="fas fa-sign-out-alt fa-3x mb-3" style="color: #ef4444;"></i>
+      <h4 class="mb-1 text-white"><?php echo $service; ?><br><small class="text-muted-premium">Check-Out</small></h4>
+      <div class="counter" style="color: #ef4444;"><?php echo $tgueste; ?></div>
+    </div>
+
+    <div class="event-card glass-panel hover-scale" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+      <i class="fas fa-users fa-3x mb-3" style="color: #60a5fa;"></i>
+      <h4 class="mb-1 text-white">Total<br><small class="text-muted-premium"><?php echo $service; ?></small></h4>
+      <div class="counter" style="color: #60a5fa;"><?php echo $tguests; ?></div>
+    </div>
+
+    <div class="event-card glass-panel hover-scale">
+      <i class="fas fa-qrcode fa-3x mb-3" style="color: var(--text-main);"></i>
+      <h4 class="mb-1 text-white">Pass<br><small class="text-muted-premium">Available</small></h4>
+      <div class="counter"><?php echo ($totguesto - $tguests); ?></div>
+    </div>
+  </div>
+
+</div>
+	
+<?php } else { ?>
+  <div class="main-content container text-center">
+    <div class="glass-panel d-inline-block">
+      <h2 class="text-white mb-3">Event Not Found</h2>
+      <p class="text-muted-premium">The event you are looking for does not exist or has been removed.</p>
+      <a href="index.php" class="btn btn-premium mt-3">Back to Home</a>
+    </div>
+  </div>
+<?php } ?>
+
+<?php include("footer.php"); ?>
 
 <script>
 	$(document).ready(function(){
@@ -164,14 +129,12 @@
 			$("#refresh").load(window.location.href + " #refresh" );
 		}, 3000);
 	});	
-</script>
 
-<script>
 	function clearData(){	
-		if(confirm("Are you sure you want to reset counter for <?php echo $eve;?> Event?  Counter will be reset to ZERO.")){
-			window.location.href = 'reset-codes.php?events=<?php echo $eid;?>';
-		}else{
-			window.location.href = 'events.php?events=<?php echo $eid;?>';
+		if(confirm("Are you sure you want to reset the counter for this event? All data will be reset to ZERO.")){
+			window.location.href = 'reset-codes.php?events=<?php echo isset($eid) ? $eid : 0; ?>';
 		}
 	}
 </script>
+</body>
+</html>

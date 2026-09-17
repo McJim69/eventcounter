@@ -1,62 +1,64 @@
 <!DOCTYPE html>
-<html style="font-size: 16px;">
-  <head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Event Guest Counter">
-	<meta http-equiv="refresh" content="300">
-	<title>Event Guest Counter</title>
-	<link rel="shortcut icon" href="images/favicon.png" />
-    <link rel="stylesheet" href="nicepage.css" media="screen">
-	<link rel="stylesheet" href="home.css" media="screen">
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
-	<script src="assets/js/jquery.js"></script>
-    <script class="u-script" type="text/javascript" src="nicepage.js" defer=""></script>
-    <link id="u-theme-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i|Open+Sans:300,300i,400,400i,600,600i,700,700i,800,800i">
-    <link id="u-page-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i">
+    <title>Event Guest Counter</title>
+    <link rel="shortcut icon" href="images/favicon.png" />
+    
+    <!-- Bootstrap & Premium Theme -->
+	<link href="assets/sweetalert2/dist/sweetalert2.all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/premium.css" media="screen">
+    
+    <!-- jQuery, SweetAlert2, FontAwesome, ChartJS, Bootstrap JS -->
+    <script src="assets/jquery/jquery.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <link href="assets/fontawesome/css/all.min.css" rel="stylesheet">
+    <script src="assets/chartjs/chart.js"></script>
+</head>
 
-	<link href="facebox/facebox.css" media="screen" rel="stylesheet" type="text/css"/>
-	<script src="facebox/facebox.js" type="text/javascript"></script>
-	<script type="text/javascript">
-		jQuery(document).ready(function($) {
-		  $('a[rel*=facebox]').facebox({
-			loadingImage : 'facebox/loading.gif',
-			closeImage   : 'facebox/closelabel.png'
-		  })		  
-		})
-	</script>	
-  </head>
+<script type="text/javascript">
+  jQuery(document).ready(function($) {
+    // Hijack legacy facebox links to use SweetAlert2 instead
+    $('a[rel*=facebox]').on('click', function(e) {
+      e.preventDefault();
+      var targetUrl = $(this).attr('href');
+      
+      Swal.fire({
+        title: 'Loading...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
 
-<?php
-	function jump($page){
-		echo "<script>window.location='$page'</script>";
-	}
-	function Q($qry){
-		global $conn;
-		return $conn->query($qry);
-	}
-	function d($qry){
-		global $conn;
-		return die(mysqli_error($conn));
-	}
-	function fetch($qry){
-		return mysqli_fetch_array($qry);
-	}
-?>	
-
-<script>
-	if (window.XMLHttpRequest)
-		xmlhttp=new XMLHttpRequest();
-	else
-		xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");				
-	function getID(id){
-		return document.getElementById(id);
-	}
-	function conf(){
-		return confirm("Are you sure??");
-	}
-	function jump(page){
-		window.location=page;
-	}
+      $.get(targetUrl, function(data) {
+        Swal.fire({
+          html: data,
+          width: '600px', // Matches Bootstrap modal width
+          showConfirmButton: false,
+          showCloseButton: true,
+          background: 'var(--bg-color)',
+          color: 'var(--text-main)',
+          customClass: {
+            popup: 'premium-swal-popup',
+            closeButton: 'premium-swal-close'
+          }
+        });
+      }).fail(function() {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Something went wrong while loading the content!',
+          background: 'var(--bg-color)',
+          color: 'var(--text-main)'
+        });
+      });
+    });
+  });
 </script>
 
-<body data-home-page="index.php" data-home-page-title="Home" class="u-body">
+<body>
